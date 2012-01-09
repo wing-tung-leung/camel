@@ -308,14 +308,24 @@ public class JmsProducer extends DefaultAsyncProducer {
             }
         };
 
-        doSend(false, destinationName, destination, messageCreator, null);
-
+        MessageCaptor messageCaptor = new MessageCaptor();
+        doSend(false, destinationName, destination, messageCreator, messageCaptor);
+        Message sentMessage = messageCaptor.message;
+        exchange.setOut(new JmsMessage(sentMessage, null));
+        
         // after sending then set the OUT message id to the JMSMessageID so its identical
         setMessageId(exchange);
 
         // we are synchronous so return true
         callback.done(true);
         return true;
+    }
+    
+    private class MessageCaptor implements MessageSentCallback {
+    	protected Message message;
+		public void sent(Session session, Message message, Destination destination) {
+			this.message = message;
+		}
     }
 
     /**
@@ -336,24 +346,12 @@ public class JmsProducer extends DefaultAsyncProducer {
 
         // destination should be preferred
         if (destination != null) {
-            if (inOut) {
-                if (template != null) {
-                    template.send(destination, messageCreator, callback);
-                }
-            } else {
-                if (template != null) {
-                    template.send(destination, messageCreator);
-                }
+            if (template != null) {
+                template.send(destination, messageCreator, callback);
             }
         } else if (destinationName != null) {
-            if (inOut) {
-                if (template != null) {
-                    template.send(destinationName, messageCreator, callback);
-                }
-            } else {
-                if (template != null) {
-                    template.send(destinationName, messageCreator);
-                }
+            if (template != null) {
+                template.send(destinationName, messageCreator, callback);
             }
         } else {
             throw new IllegalArgumentException("Neither destination nor destinationName is specified on this endpoint: " + endpoint);
